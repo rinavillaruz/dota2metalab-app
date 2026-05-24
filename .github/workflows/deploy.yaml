@@ -41,7 +41,7 @@ jobs:
           fi
 
   build-base:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: check-base
     if: needs.check-base.outputs.changed == 'true'
     steps:
@@ -65,7 +65,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   check-fetcher:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [build-base, check-base]
     if: always() && (needs.build-base.result == 'success' || needs.build-base.result == 'skipped')
     outputs:
@@ -95,7 +95,7 @@ jobs:
           fi
 
   check-api:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: check-fetcher
     if: always() && needs.check-fetcher.result == 'success'
     outputs:
@@ -125,7 +125,7 @@ jobs:
           fi
 
   check-trainer:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: check-fetcher
     if: always() && needs.check-fetcher.result == 'success'
     outputs:
@@ -155,7 +155,7 @@ jobs:
           fi
 
   build-api:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [check-api, check-fetcher]
     if: always() && (needs.check-fetcher.result == 'success') && needs.check-api.outputs.changed == 'true'
     steps:
@@ -181,7 +181,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build-trainer:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [check-trainer, check-fetcher]
     if: always() && (needs.check-fetcher.result == 'success') && needs.check-trainer.outputs.changed == 'true'
     steps:
@@ -207,7 +207,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   build-fetcher:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: check-fetcher
     if: always() && (needs.check-fetcher.result == 'success') && needs.check-fetcher.outputs.changed == 'true'
     steps:
@@ -233,7 +233,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-dev:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [build-api, build-trainer, build-fetcher]
     if: always() && (needs.build-api.result == 'success' || needs.build-trainer.result == 'success' || needs.build-fetcher.result == 'success')
     steps:
