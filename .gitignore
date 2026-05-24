@@ -1,0 +1,21 @@
+venv/
+__pycache__/
+*.pyc
+models/
+actions-runner*/
+venv/
+
+# =============================================================================
+# OPERATING SYSTEMS
+# =============================================================================
+.DS_Store
+Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.zip
+
+data/*
+.env
+*.txt

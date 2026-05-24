@@ -1,0 +1,14 @@
+FROM rinavillaruz/dota2metalab-base:latest
+
+WORKDIR /app
+
+COPY build/requirements-trainer.txt .
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements-trainer.txt
+
+COPY scripts/ scripts/
+
+COPY src/ src/
+
+CMD [ "python", "scripts/train_model.py"]

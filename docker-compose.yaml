@@ -1,0 +1,59 @@
+services:
+  mongodb:
+    image: mongo:7.0
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes: 
+      - ./data/mongodb:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+
+  fetcher:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.trainer
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017
+      - PYTHONPATH=/app
+    restart: "no"
+    command: ["python", "scripts/store_database.py"]
+    
+  trainer:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.trainer
+    depends_on:
+      fetcher:
+        condition: service_completed_successfully
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017
+      - PYTHONPATH=/app
+    restart: "no"
+    volumes:
+      - ./models:/app/models
+
+  api:
+    build:
+      context: .
+      dockerfile: build/Dockerfile.api
+    depends_on:
+      trainer:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGO_URI=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongodb:27017
+      - PYTHONPATH=/app
+    restart: always
+    volumes:
+      - ./models:/app/models
