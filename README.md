@@ -9,3 +9,5 @@ pip freeze > requirements.txt
 
 # 4. run the script
 PYTHONPATH=. python scripts/fetch_data.py
+
+# zip -r dota2metalab-app.zip .github .gitignore build docker-compose.yaml LICENSE README.md scripts src

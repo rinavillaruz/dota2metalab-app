@@ -13,7 +13,7 @@ on:
 
 jobs:
   check-base:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
@@ -235,15 +235,14 @@ jobs:
   deploy-dev:
     runs-on: self-hosted
     needs: [build-api, build-trainer, build-fetcher]
-    permissions:
-      contents: write
     if: always() && (needs.build-api.result == 'success' || needs.build-trainer.result == 'success' || needs.build-fetcher.result == 'success')
     steps:
-      - name: Checkout Code
+      - name: Checkout infra repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
+          repository: rinavillaruz/dota2metalab-infra
+          token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
+          ref: dev
       - name: Update image tag in values-dev.yaml
         run: |
           IMAGE_TAG="${{ github.sha }}"
@@ -254,5 +253,5 @@ jobs:
           git config user.email "142535552+rinavillaruz@users.noreply.github.com"
           git config user.name "rinavillaruz"
           git add deploy/helm/values-dev.yaml
-          git commit -m "ci: update image tag to $IMAGE_TAG"
+          git commit -m "ci: update image tag to $IMAGE_TAG [skip ci]"
           git push origin HEAD:dev
