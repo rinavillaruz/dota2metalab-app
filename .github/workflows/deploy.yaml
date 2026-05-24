@@ -18,7 +18,7 @@ jobs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       - name: Debug base change check
@@ -46,7 +46,7 @@ jobs:
     if: needs.check-base.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -72,7 +72,7 @@ jobs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       - name: Debug base change check
@@ -102,7 +102,7 @@ jobs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       - name: Debug base change check
@@ -132,7 +132,7 @@ jobs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 2
       - name: Debug base change check
@@ -160,7 +160,7 @@ jobs:
     if: always() && (needs.check-fetcher.result == 'success') && needs.check-api.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -186,7 +186,7 @@ jobs:
     if: always() && (needs.check-fetcher.result == 'success') && needs.check-trainer.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -212,7 +212,7 @@ jobs:
     if: always() && (needs.check-fetcher.result == 'success') && needs.check-fetcher.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -238,7 +238,7 @@ jobs:
     if: always() && (needs.build-api.result == 'success' || needs.build-trainer.result == 'success' || needs.build-fetcher.result == 'success')
     steps:
       - name: Checkout infra repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: rinavillaruz/dota2metalab-infra
           token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
