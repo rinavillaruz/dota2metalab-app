@@ -102,7 +102,7 @@ def init_app_data():
         collection = None
 
     # Load all matches once — used for both win rates and synergy
-    all_matches = list(collection.find({})) if collection else []
+    all_matches = list(collection.find({})) if collection is not None else []
     print(f"Loaded {len(all_matches)} matches from MongoDB")
 
     # Calculate hero win rates from local matches

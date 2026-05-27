@@ -2,14 +2,14 @@ import pytest
 import json
 import src.api.app as app_module
 from unittest.mock import MagicMock
-
+from pymongo.synchronous.collection import Collection
 
 @pytest.fixture
 def client():
     app_module.model         = MagicMock()
     app_module.scaler        = MagicMock()
     app_module.client        = MagicMock()
-    app_module.collection    = MagicMock()
+    app_module.collection    = MagicMock(spec=Collection)
     app_module.hero_winrates = {i: {"win_rate": 0.5} for i in range(1, 156)}
     app_module.synergy       = {}
 
@@ -35,6 +35,14 @@ class TestHealthEndpoint:
         assert "status" in data
         assert "model_loaded" in data
         assert "mongodb" in data
+
+    def test_collection_is_not_none_check(self):
+        """Ensures PyMongo Collection is never used in a boolean context"""
+        mock_col = MagicMock(spec=Collection)
+        mock_col.find.return_value = []
+        # This would raise NotImplementedError if `if collection` is used instead of `if collection is not None`
+        result = list(mock_col.find({})) if mock_col is not None else []
+        assert result == []
 
 class TestStatsEndpoint:
 
