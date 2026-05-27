@@ -304,25 +304,29 @@ jobs:
           repository: rinavillaruz/dota2metalab-infra
           token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
           ref: dev
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
       - name: Update image tags in values-dev.yaml
         run: |
           IMAGE_TAG="${{ needs.generate-tag.outputs.tag }}"
           echo "Updating values-dev.yaml with tag: $IMAGE_TAG"
 
-          # Only update the tag for images that were actually built
-          # Each service has its own tag — skipped builds keep their existing tag
+          # Only update the tag for images that were actually built.
+          # Each service has its own tag — skipped builds keep their existing tag.
           if [ "${{ needs.build-api.result }}" == "success" ]; then
-            perl -i -pe "s/(image:\s*\n\s*api:\s*\n\s*tag:).*/\$1 $IMAGE_TAG/" deploy/helm/values-dev.yaml
+            yq e ".image.api.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-dev.yaml
             echo "Updated api tag to $IMAGE_TAG"
           fi
 
           if [ "${{ needs.build-fetcher.result }}" == "success" ]; then
-            perl -i -0pe "s/(fetcher:\s*\n\s*tag:)[^\n]*/\$1 $IMAGE_TAG/" deploy/helm/values-dev.yaml
+            yq e ".image.fetcher.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-dev.yaml
             echo "Updated fetcher tag to $IMAGE_TAG"
           fi
 
           if [ "${{ needs.build-trainer.result }}" == "success" ]; then
-            perl -i -0pe "s/(trainer:\s*\n\s*tag:)[^\n]*/\$1 $IMAGE_TAG/" deploy/helm/values-dev.yaml
+            yq e ".image.trainer.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-dev.yaml
             echo "Updated trainer tag to $IMAGE_TAG"
           fi
 
