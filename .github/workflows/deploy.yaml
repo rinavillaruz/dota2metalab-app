@@ -16,9 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.check.outputs.changed }}
+      force: ${{ steps.check.outputs.force }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
       - name: Debug base change check
@@ -30,7 +31,9 @@ jobs:
       - name: Check if base change
         id: check
         run: |
-          if [ "${{ github.event.inputs.force_rebuild }}" == "true" ]; then
+          FORCE="${{ github.event.inputs.force_rebuild }}"
+          echo "force=$FORCE" >> $GITHUB_OUTPUT
+          if [ "$FORCE" == "true" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -39,16 +42,17 @@ jobs:
               && echo "changed=true" >> $GITHUB_OUTPUT \
               || echo "changed=false" >> $GITHUB_OUTPUT
           fi
+
   test:
     runs-on: ubuntu-latest
     needs: check-base
     if: always() && needs.check-base.result == 'success'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -64,11 +68,11 @@ jobs:
 
   build-base:
     runs-on: ubuntu-latest
-    needs: [check-base, test] 
-    if: needs.check-base.outputs.changed == 'true'
+    needs: [check-base, test]
+    if: needs.check-base.outputs.changed == 'true' && needs.test.result == 'success'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -88,25 +92,20 @@ jobs:
 
   check-fetcher:
     runs-on: ubuntu-latest
-    needs: [build-base, check-base]
-    if: always() && (needs.build-base.result == 'success' || needs.build-base.result == 'skipped')
+    needs: [build-base, check-base, test]
+    if: always() && needs.test.result == 'success' && (needs.build-base.result == 'success' || needs.build-base.result == 'skipped')
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
-      - name: Debug base change check
-        run: |
-          echo "Changed files:"
-          git diff --name-only HEAD~1 HEAD
-          echo "HEAD~1 exists:"
-          git rev-parse HEAD~1 || echo "no HEAD~1"
       - name: Check if fetcher change
         id: check
         run: |
-          if [ "${{ github.event.inputs.force_rebuild }}" == "true" ]; then
+          FORCE="${{ needs.check-base.outputs.force }}"
+          if [ "$FORCE" == "true" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -118,25 +117,20 @@ jobs:
 
   check-api:
     runs-on: ubuntu-latest
-    needs: check-fetcher
+    needs: [check-fetcher, check-base]
     if: always() && needs.check-fetcher.result == 'success'
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
-      - name: Debug base change check
-        run: |
-          echo "Changed files:"
-          git diff --name-only HEAD~1 HEAD
-          echo "HEAD~1 exists:"
-          git rev-parse HEAD~1 || echo "no HEAD~1"
       - name: Check if api change
         id: check
         run: |
-          if [ "${{ github.event.inputs.force_rebuild }}" == "true" ]; then
+          FORCE="${{ needs.check-base.outputs.force }}"
+          if [ "$FORCE" == "true" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -148,25 +142,20 @@ jobs:
 
   check-trainer:
     runs-on: ubuntu-latest
-    needs: check-fetcher
+    needs: [check-fetcher, check-base]
     if: always() && needs.check-fetcher.result == 'success'
     outputs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 2
-      - name: Debug base change check
-        run: |
-          echo "Changed files:"
-          git diff --name-only HEAD~1 HEAD
-          echo "HEAD~1 exists:"
-          git rev-parse HEAD~1 || echo "no HEAD~1"
       - name: Check if trainer change
         id: check
         run: |
-          if [ "${{ github.event.inputs.force_rebuild }}" == "true" ]; then
+          FORCE="${{ needs.check-base.outputs.force }}"
+          if [ "$FORCE" == "true" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
           elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
@@ -179,10 +168,10 @@ jobs:
   build-api:
     runs-on: ubuntu-latest
     needs: [check-api, check-fetcher]
-    if: always() && (needs.check-fetcher.result == 'success') && needs.check-api.outputs.changed == 'true'
+    if: always() && needs.check-fetcher.result == 'success' && needs.check-api.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -205,10 +194,10 @@ jobs:
   build-trainer:
     runs-on: ubuntu-latest
     needs: [check-trainer, check-fetcher]
-    if: always() && (needs.check-fetcher.result == 'success') && needs.check-trainer.outputs.changed == 'true'
+    if: always() && needs.check-fetcher.result == 'success' && needs.check-trainer.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -231,10 +220,10 @@ jobs:
   build-fetcher:
     runs-on: ubuntu-latest
     needs: check-fetcher
-    if: always() && (needs.check-fetcher.result == 'success') && needs.check-fetcher.outputs.changed == 'true'
+    if: always() && needs.check-fetcher.result == 'success' && needs.check-fetcher.outputs.changed == 'true'
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -257,10 +246,15 @@ jobs:
   deploy-dev:
     runs-on: ubuntu-latest
     needs: [build-api, build-trainer, build-fetcher]
-    if: always() && (needs.build-api.result == 'success' || needs.build-trainer.result == 'success' || needs.build-fetcher.result == 'success')
+    if: |
+      always() &&
+      (needs.build-api.result == 'success' || needs.build-api.result == 'skipped') &&
+      (needs.build-trainer.result == 'success' || needs.build-trainer.result == 'skipped') &&
+      (needs.build-fetcher.result == 'success' || needs.build-fetcher.result == 'skipped') &&
+      (needs.build-api.result == 'success' || needs.build-trainer.result == 'success' || needs.build-fetcher.result == 'success')
     steps:
       - name: Checkout infra repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: rinavillaruz/dota2metalab-infra
           token: ${{ secrets.INFRA_DEPLOY_TOKEN }}
