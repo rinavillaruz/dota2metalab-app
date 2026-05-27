@@ -86,6 +86,7 @@ jobs:
           context: .
           file: build/Dockerfile.base
           push: true
+          platforms: linux/amd64
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-base:latest
           cache-from: type=gha,scope=base
           cache-to: type=gha,mode=max
@@ -204,6 +205,7 @@ jobs:
           context: .
           file: build/Dockerfile.api
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-api:${{ needs.generate-tag.outputs.tag }}
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-api:latest
@@ -230,6 +232,7 @@ jobs:
           context: .
           file: build/Dockerfile.trainer
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-trainer:${{ needs.generate-tag.outputs.tag }}
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-trainer:latest
@@ -256,6 +259,7 @@ jobs:
           context: .
           file: build/Dockerfile.fetcher
           push: true
+          platforms: linux/amd64
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-fetcher:${{ needs.generate-tag.outputs.tag }}
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-fetcher:latest
