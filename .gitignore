@@ -18,4 +18,4 @@ Thumbs.db
 
 data/*
 .env
-*.txt
+README.md

@@ -39,10 +39,32 @@ jobs:
               && echo "changed=true" >> $GITHUB_OUTPUT \
               || echo "changed=false" >> $GITHUB_OUTPUT
           fi
+  test:
+    runs-on: ubuntu-latest
+    needs: check-base
+    if: always() && needs.check-base.result == 'success'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r build/requirements-base.txt
+          pip install -r build/requirements-api.txt
+          pip install -r build/requirements-fetcher.txt
+          pip install -r build/requirements-test.txt
+
+      - name: Run tests
+        run: pytest tests/ -v
 
   build-base:
     runs-on: ubuntu-latest
-    needs: check-base
+    needs: [check-base, test] 
     if: needs.check-base.outputs.changed == 'true'
     steps:
       - name: Checkout Code

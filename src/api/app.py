@@ -61,85 +61,102 @@ HERO_NAMES = [
 app = Flask(__name__)
 CORS(app)
 
-# Load model and scaler
-try:
-    model  = keras.models.load_model(MODEL_PATH)
-    scaler = joblib.load(SCALER_PATH)
-    print("Model loaded successfully")
-except Exception as e:
-    print(f"Model not loaded: {e}")
-    model  = None
-    scaler = None
+# Global state — populated by init_app_data() at startup, or overridden in tests
+model        = None
+scaler       = None
+client       = None
+db           = None
+collection   = None
+all_matches  = []
+hero_winrates = {}
+synergy      = {}
 
-# MongoDB connection
-try:
-    client     = MongoClient(MONGO_URI)
-    db         = client['dota2metalab']
-    collection = db['matches']
-    client.admin.command('ping')
-    print("MongoDB connected successfully")
-except Exception as e:
-    print(f"MongoDB connection failed: {e}")
-    client     = None
-    db         = None
-    collection = None
 
-# Load all matches once — used for both win rates and synergy
-all_matches = list(collection.find({})) if collection else []
-print(f"Loaded {len(all_matches)} matches from MongoDB")
+def init_app_data():
+    """Load model, connect to MongoDB, and build hero stats + synergy matrix.
+    Called once at startup. Skipped during tests so imports are fast.
+    """
+    global model, scaler, client, db, collection, all_matches, hero_winrates, synergy
 
-# Calculate hero win rates from local matches — zero OpenDota dependency
-print("Calculating hero win rates from local matches...")
-hero_stats = {}
-for match in all_matches:
-    if 0 in match['radiant_team'] or 0 in match['dire_team']:
-        continue
-    if len(match['radiant_team']) != 5 or len(match['dire_team']) != 5:
-        continue
-    winners = match['radiant_team'] if match['radiant_win'] else match['dire_team']
-    losers  = match['dire_team']    if match['radiant_win'] else match['radiant_team']
-    for hero_id in winners:
-        if hero_id not in hero_stats:
-            hero_stats[hero_id] = {'wins': 0, 'games': 0}
-        hero_stats[hero_id]['wins']  += 1
-        hero_stats[hero_id]['games'] += 1
-    for hero_id in losers:
-        if hero_id not in hero_stats:
-            hero_stats[hero_id] = {'wins': 0, 'games': 0}
-        hero_stats[hero_id]['games'] += 1
+    # Load model and scaler
+    try:
+        model  = keras.models.load_model(MODEL_PATH)
+        scaler = joblib.load(SCALER_PATH)
+        print("Model loaded successfully")
+    except Exception as e:
+        print(f"Model not loaded: {e}")
+        model  = None
+        scaler = None
 
-hero_winrates = {
-    hid: {
-        'win_rate':  s['wins'] / s['games'] if s['games'] > 0 else 0.5,
-        'pick_rate': 0,
-        'ban_rate':  0
+    # MongoDB connection
+    try:
+        client     = MongoClient(MONGO_URI)
+        db         = client['dota2metalab']
+        collection = db['matches']
+        client.admin.command('ping')
+        print("MongoDB connected successfully")
+    except Exception as e:
+        print(f"MongoDB connection failed: {e}")
+        client     = None
+        db         = None
+        collection = None
+
+    # Load all matches once — used for both win rates and synergy
+    all_matches = list(collection.find({})) if collection else []
+    print(f"Loaded {len(all_matches)} matches from MongoDB")
+
+    # Calculate hero win rates from local matches
+    print("Calculating hero win rates from local matches...")
+    hero_stats = {}
+    for match in all_matches:
+        if 0 in match['radiant_team'] or 0 in match['dire_team']:
+            continue
+        if len(match['radiant_team']) != 5 or len(match['dire_team']) != 5:
+            continue
+        winners = match['radiant_team'] if match['radiant_win'] else match['dire_team']
+        losers  = match['dire_team']    if match['radiant_win'] else match['radiant_team']
+        for hero_id in winners:
+            if hero_id not in hero_stats:
+                hero_stats[hero_id] = {'wins': 0, 'games': 0}
+            hero_stats[hero_id]['wins']  += 1
+            hero_stats[hero_id]['games'] += 1
+        for hero_id in losers:
+            if hero_id not in hero_stats:
+                hero_stats[hero_id] = {'wins': 0, 'games': 0}
+            hero_stats[hero_id]['games'] += 1
+
+    hero_winrates = {
+        hid: {
+            'win_rate':  s['wins'] / s['games'] if s['games'] > 0 else 0.5,
+            'pick_rate': 0,
+            'ban_rate':  0
+        }
+        for hid, s in hero_stats.items()
     }
-    for hid, s in hero_stats.items()
-}
-print(f"Calculated win rates for {len(hero_winrates)} heroes")
+    print(f"Calculated win rates for {len(hero_winrates)} heroes")
 
-# Build synergy matrix from local matches
-print("Building synergy matrix...")
-synergy = {}
-for match in all_matches:
-    if 0 in match['radiant_team'] or 0 in match['dire_team']:
-        continue
-    if len(match['radiant_team']) != 5 or len(match['dire_team']) != 5:
-        continue
-    winners = match['radiant_team'] if match['radiant_win'] else match['dire_team']
-    losers  = match['dire_team']    if match['radiant_win'] else match['radiant_team']
-    for i in range(5):
-        for j in range(i+1, 5):
-            win_pair  = tuple(sorted([winners[i], winners[j]]))
-            lose_pair = tuple(sorted([losers[i],  losers[j]]))
-            if win_pair not in synergy:
-                synergy[win_pair] = {'wins': 0, 'games': 0}
-            if lose_pair not in synergy:
-                synergy[lose_pair] = {'wins': 0, 'games': 0}
-            synergy[win_pair]['wins']   += 1
-            synergy[win_pair]['games']  += 1
-            synergy[lose_pair]['games'] += 1
-print(f"Built synergy for {len(synergy)} hero pairs")
+    # Build synergy matrix from local matches
+    print("Building synergy matrix...")
+    for match in all_matches:
+        if 0 in match['radiant_team'] or 0 in match['dire_team']:
+            continue
+        if len(match['radiant_team']) != 5 or len(match['dire_team']) != 5:
+            continue
+        winners = match['radiant_team'] if match['radiant_win'] else match['dire_team']
+        losers  = match['dire_team']    if match['radiant_win'] else match['radiant_team']
+        for i in range(5):
+            for j in range(i+1, 5):
+                win_pair  = tuple(sorted([winners[i], winners[j]]))
+                lose_pair = tuple(sorted([losers[i],  losers[j]]))
+                if win_pair not in synergy:
+                    synergy[win_pair] = {'wins': 0, 'games': 0}
+                if lose_pair not in synergy:
+                    synergy[lose_pair] = {'wins': 0, 'games': 0}
+                synergy[win_pair]['wins']   += 1
+                synergy[win_pair]['games']  += 1
+                synergy[lose_pair]['games'] += 1
+    print(f"Built synergy for {len(synergy)} hero pairs")
+
 
 # Helper
 def get_team_synergy(team, synergy):
@@ -153,6 +170,7 @@ def get_team_synergy(team, synergy):
                 scores.append(0.5)
     return sum(scores) / len(scores)
 
+
 @app.route('/health')
 def health():
     return jsonify({
@@ -162,6 +180,7 @@ def health():
         'heroes_loaded': len(hero_winrates),
         'synergy_pairs': len(synergy)
     })
+
 
 @app.route('/stats')
 def stats():
@@ -174,6 +193,7 @@ def stats():
         'radiant_wins':  radiant_wins,
         'dire_wins':     total - radiant_wins
     })
+
 
 @app.route('/predict/draft', methods=['POST'])
 def predict_draft():
@@ -201,6 +221,7 @@ def predict_draft():
         'dire_win_probability':    float(1 - prediction),
         'predicted_winner':        'Radiant' if prediction > 0.5 else 'Dire'
     })
+
 
 @app.route('/recommend', methods=['POST'])
 def recommend():
@@ -234,10 +255,13 @@ def recommend():
     candidates.sort(key=lambda x: x['combined'], reverse=True)
     return jsonify({'recommendations': candidates[:5]})
 
+
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
 
+
 if __name__ == '__main__':
+    init_app_data()
     port = int(os.getenv('PORT', 8080))
     app.run(host='0.0.0.0', port=port, debug=False)

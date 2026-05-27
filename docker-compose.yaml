@@ -4,7 +4,7 @@ services:
     ports:
       - "127.0.0.1:27017:27017"
     volumes: 
-      - ./data/mongodb:/data/db
+      - ../data/mongodb:/data/db
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -40,7 +40,7 @@ services:
       - PYTHONPATH=/app
     restart: "no"
     volumes:
-      - ./models:/app/models
+      - ../models:/app/models
 
   api:
     build:
@@ -56,4 +56,4 @@ services:
       - PYTHONPATH=/app
     restart: always
     volumes:
-      - ./models:/app/models
+      - ../models:/app/models
