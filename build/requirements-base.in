@@ -2,3 +2,5 @@ tensorflow
 scikit-learn
 numpy
 joblib
+idna==3.15
+urllib3==2.7.0
