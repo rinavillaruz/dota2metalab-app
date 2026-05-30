@@ -10,9 +10,7 @@ absl-py==2.4.0
     #   tensorflow
 astunparse==1.6.3
     # via tensorflow
-backports-tarfile==1.2.0
-    # via jaraco-context
-certifi==2026.4.22
+certifi==2026.5.20
     # via requests
 charset-normalizer==3.4.7
     # via requests
@@ -32,17 +30,15 @@ idna==3.15
     # via
     #   -r build/requirements-base.in
     #   requests
-jaraco-context==6.1.2
-    # via -r build/requirements-base.in
 joblib==1.5.3
     # via
     #   -r build/requirements-base.in
     #   scikit-learn
-keras==3.14.0
+keras==3.14.1
     # via tensorflow
 libclang==18.1.1
     # via tensorflow
-markdown-it-py==4.0.0
+markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
@@ -52,7 +48,7 @@ ml-dtypes==0.5.4
     #   tensorflow
 namex==0.1.0
     # via keras
-numpy==2.4.4
+numpy==2.4.6
     # via
     #   -r build/requirements-base.in
     #   h5py
@@ -63,18 +59,18 @@ numpy==2.4.4
     #   tensorflow
 opt-einsum==3.4.0
     # via tensorflow
-optree==0.19.0
+optree==0.19.1
     # via keras
 packaging==26.2
     # via
     #   keras
     #   tensorflow
     #   wheel
-protobuf==7.34.1
+protobuf==7.35.0
     # via tensorflow
 pygments==2.20.0
     # via rich
-requests==2.33.1
+requests==2.34.2
     # via tensorflow
 rich==15.0.0
     # via keras
@@ -103,10 +99,8 @@ urllib3==2.7.0
     #   -r build/requirements-base.in
     #   requests
 wheel==0.47.0
-    # via
-    #   -r build/requirements-base.in
-    #   astunparse
-wrapt==2.1.2
+    # via astunparse
+wrapt==2.2.1
     # via tensorflow
 
 # The following packages are considered to be unsafe in a requirements file:
