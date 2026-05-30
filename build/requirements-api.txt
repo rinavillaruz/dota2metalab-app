@@ -27,6 +27,8 @@ markupsafe==3.0.3
     #   werkzeug
 pymongo==4.17.0
     # via -r build/requirements-api.in
+python-dotenv==1.2.2
+    # via -r build/requirements-api.in
 werkzeug==3.1.8
     # via
     #   flask

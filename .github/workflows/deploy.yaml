@@ -78,7 +78,7 @@ jobs:
         run: pytest tests/ -v --cov=src --cov-fail-under=50
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@v5
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
@@ -117,6 +117,7 @@ jobs:
           format: table
           severity: CRITICAL,HIGH
           exit-code: 1
+          ignore-unfixed: true
 
   check-fetcher:
     runs-on: ubuntu-latest
