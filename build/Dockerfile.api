@@ -5,7 +5,8 @@ WORKDIR /app
 COPY build/requirements-api.txt .
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements-api.txt
+    pip install -r requirements-api.txt && \
+    pip install "setuptools>=80.0.0" "wheel>=0.46.2" "jaraco.context>=6.1.0"
 
 COPY src/ src/
 
