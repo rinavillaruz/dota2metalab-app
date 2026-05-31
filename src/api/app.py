@@ -7,6 +7,7 @@ from pymongo import MongoClient
 from flask import Flask, request, jsonify
 from flask import send_from_directory
 from flask_cors import CORS
+from flask import send_from_directory
 
 MONGO_URI   = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 S3_BUCKET   = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
@@ -279,6 +280,9 @@ def recommend():
     candidates.sort(key=lambda x: x['combined'], reverse=True)
     return jsonify({'recommendations': candidates[:5]})
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static', 'favicon.ico', mimetype='image/x-icon')
 
 @app.route('/')
 def index():
