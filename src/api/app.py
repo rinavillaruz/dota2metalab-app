@@ -63,7 +63,7 @@ HERO_NAMES = [
 app = Flask(__name__)
 CORS(app)
 
-# Global state — populated by init_app_data() at startup, or overridden in tests
+# Global state
 model         = None
 scaler        = None
 client        = None
@@ -74,13 +74,9 @@ hero_winrates = {}
 synergy       = {}
 
 
-def init_app_data():
-    """Load model from S3, connect to MongoDB, and build hero stats + synergy matrix.
-    Called once at startup. Skipped during tests so imports are fast.
-    """
-    global model, scaler, client, db, collection, all_matches, hero_winrates, synergy
-
-    # Download model and scaler from S3
+def load_model_from_s3():
+    """Download and load model from S3. Returns True if successful."""
+    global model, scaler
     try:
         s3 = boto3.client('s3')
         s3.download_file(S3_BUCKET, f"{S3_PREFIX}/dota2_model.h5", MODEL_PATH)
@@ -88,10 +84,22 @@ def init_app_data():
         model  = keras.models.load_model(MODEL_PATH)
         scaler = joblib.load(SCALER_PATH)
         print("Model loaded successfully from S3")
+        return True
     except Exception as e:
         print(f"Model not loaded: {e}")
         model  = None
         scaler = None
+        return False
+
+
+def init_app_data():
+    """Load model from S3, connect to MongoDB, and build hero stats + synergy matrix.
+    Called once at startup. Skipped during tests so imports are fast.
+    """
+    global client, db, collection, all_matches, hero_winrates, synergy
+
+    # Download model and scaler from S3
+    load_model_from_s3()
 
     # MongoDB connection
     try:
@@ -106,11 +114,11 @@ def init_app_data():
         db         = None
         collection = None
 
-    # Load all matches once — used for both win rates and synergy
+    # Load all matches once
     all_matches = list(collection.find({})) if collection is not None else []
     print(f"Loaded {len(all_matches)} matches from MongoDB")
 
-    # Calculate hero win rates from local matches
+    # Calculate hero win rates
     print("Calculating hero win rates from local matches...")
     hero_stats = {}
     for match in all_matches:
@@ -140,7 +148,7 @@ def init_app_data():
     }
     print(f"Calculated win rates for {len(hero_winrates)} heroes")
 
-    # Build synergy matrix from local matches
+    # Build synergy matrix
     print("Building synergy matrix...")
     for match in all_matches:
         if 0 in match['radiant_team'] or 0 in match['dire_team']:
@@ -185,6 +193,17 @@ def health():
         'heroes_loaded': len(hero_winrates),
         'synergy_pairs': len(synergy)
     })
+
+
+@app.route('/reload-model', methods=['POST'])
+def reload_model():
+    """Reload model from S3 without restarting the pod.
+    Called after trainer completes to pick up new model.
+    """
+    success = load_model_from_s3()
+    if success:
+        return jsonify({'status': 'model reloaded successfully'})
+    return jsonify({'status': 'model not found in S3'}), 404
 
 
 @app.route('/stats')
