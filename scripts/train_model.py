@@ -1,5 +1,7 @@
 # trains a neural network, saves model and scaler to S3
 import os
+import time
+import requests
 import numpy as np
 import joblib
 import boto3
@@ -14,6 +16,9 @@ from src.data.open_dota_fetcher import OpenDotaFetcher
 S3_BUCKET = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
 S3_PREFIX = os.getenv('S3_PREFIX', 'models')
 s3        = boto3.client('s3')
+
+# API URL for reload notification
+API_URL = os.getenv('API_URL', 'http://dota2metalab-api:8080')
 
 # Check if model already exists in S3 — skip training if it does
 try:
@@ -156,3 +161,16 @@ with tempfile.TemporaryDirectory() as tmp_dir:
     s3.upload_file(scaler_path, S3_BUCKET, f"{S3_PREFIX}/scaler.pkl")
 
     print(f"Model saved to s3://{S3_BUCKET}/{S3_PREFIX}/")
+
+# Notify API to reload model without restarting pod
+time.sleep(5)  # Wait for S3 upload to propagate
+
+try:
+    response = requests.post(f"{API_URL}/reload-model", timeout=30)
+    if response.status_code == 200:
+        print("API model reloaded successfully!")
+    else:
+        print(f"API reload returned: {response.status_code}")
+except Exception as e:
+    print(f"Could not notify API to reload model: {e}")
+    print("API will load model on next restart.")
