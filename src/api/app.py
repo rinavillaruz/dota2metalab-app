@@ -1,5 +1,6 @@
 import os
 import joblib
+import boto3
 import numpy as np
 from tensorflow import keras
 from pymongo import MongoClient
@@ -8,9 +9,10 @@ from flask import send_from_directory
 from flask_cors import CORS
 
 MONGO_URI   = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
-MODEL_DIR   = os.getenv('MODEL_DIR', 'models')
-MODEL_PATH  = f"{MODEL_DIR}/dota2_model.h5"
-SCALER_PATH = f"{MODEL_DIR}/scaler.pkl"
+S3_BUCKET   = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
+S3_PREFIX   = os.getenv('S3_PREFIX', 'models')
+MODEL_PATH  = '/tmp/dota2_model.h5'
+SCALER_PATH = '/tmp/scaler.pkl'
 
 HERO_NAMES = [
   {"id":1,"name":"Anti-Mage"},{"id":2,"name":"Axe"},{"id":3,"name":"Bane"},
@@ -62,27 +64,30 @@ app = Flask(__name__)
 CORS(app)
 
 # Global state — populated by init_app_data() at startup, or overridden in tests
-model        = None
-scaler       = None
-client       = None
-db           = None
-collection   = None
-all_matches  = []
+model         = None
+scaler        = None
+client        = None
+db            = None
+collection    = None
+all_matches   = []
 hero_winrates = {}
-synergy      = {}
+synergy       = {}
 
 
 def init_app_data():
-    """Load model, connect to MongoDB, and build hero stats + synergy matrix.
+    """Load model from S3, connect to MongoDB, and build hero stats + synergy matrix.
     Called once at startup. Skipped during tests so imports are fast.
     """
     global model, scaler, client, db, collection, all_matches, hero_winrates, synergy
 
-    # Load model and scaler
+    # Download model and scaler from S3
     try:
+        s3 = boto3.client('s3')
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/dota2_model.h5", MODEL_PATH)
+        s3.download_file(S3_BUCKET, f"{S3_PREFIX}/scaler.pkl",     SCALER_PATH)
         model  = keras.models.load_model(MODEL_PATH)
         scaler = joblib.load(SCALER_PATH)
-        print("Model loaded successfully")
+        print("Model loaded successfully from S3")
     except Exception as e:
         print(f"Model not loaded: {e}")
         model  = None

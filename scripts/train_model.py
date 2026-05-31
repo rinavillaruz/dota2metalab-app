@@ -1,29 +1,38 @@
-# trains a neural network, saves model and scaler
+# trains a neural network, saves model and scaler to S3
 import os
-import time
 import numpy as np
 import joblib
+import boto3
+import tempfile
 from tensorflow import keras
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from pymongo import MongoClient
 from src.data.open_dota_fetcher import OpenDotaFetcher
 
-MODEL_DIR   =   os.getenv('MODEL_DIR', 'models')
-MODEL_PATH  =   f"{MODEL_DIR}/dota2_model.h5"
-if os.path.exists(MODEL_PATH):
-    print("Model already exists. Skipping training.")
-    exit(0)
+# S3 configuration
+S3_BUCKET = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
+S3_PREFIX = os.getenv('S3_PREFIX', 'models')
+s3        = boto3.client('s3')
 
-MONGO_URI   =   os.getenv('MONGO_URI', 'mongodb://localhost:27017')
-client      =   MongoClient(MONGO_URI)
-db          =   client['dota2metalab']
-collection  =   db['matches']
+# Check if model already exists in S3 — skip training if it does
+try:
+    s3.head_object(Bucket=S3_BUCKET, Key=f"{S3_PREFIX}/dota2_model.h5")
+    print("Model already exists in S3. Skipping training.")
+    exit(0)
+except Exception:
+    print("Model not found in S3. Proceeding with training...")
+
+# MongoDB connection
+MONGO_URI  = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
+client     = MongoClient(MONGO_URI)
+db         = client['dota2metalab']
+collection = db['matches']
 
 # Data Collection / Data Loading
-matches     =   list(collection.find({}))
-X           =   []
-y           =   []
+matches = list(collection.find({}))
+X       = []
+y       = []
 
 # Build synergy matrix from existing matches
 print("Building synergy matrix...")
@@ -67,22 +76,21 @@ def get_team_synergy(team, synergy):
     return sum(scores) / len(scores)
 
 # Fetch hero stats
-fetcher         =   OpenDotaFetcher()
-hero_winrates   =   fetcher.fetch_hero_winrates()
+fetcher       = OpenDotaFetcher()
+hero_winrates = fetcher.fetch_hero_winrates()
 
 for match in matches:
     if 0 in match['radiant_team'] or 0 in match['dire_team']:
         continue
-
     if len(match['radiant_team']) != 5 or len(match['dire_team']) != 5:
         continue
 
-    radiant_winrates =   [hero_winrates[hero_id]['win_rate'] for hero_id in match['radiant_team']]
-    dire_winrates    =   [hero_winrates[hero_id]['win_rate'] for hero_id in match['dire_team']]
-    radiant_synergy  =   get_team_synergy(match['radiant_team'], synergy)
-    dire_synergy     =   get_team_synergy(match['dire_team'], synergy)
-    features         =   radiant_winrates + dire_winrates + [radiant_synergy, dire_synergy]
-    label            =   int(match['radiant_win'])
+    radiant_winrates = [hero_winrates[hero_id]['win_rate'] for hero_id in match['radiant_team']]
+    dire_winrates    = [hero_winrates[hero_id]['win_rate'] for hero_id in match['dire_team']]
+    radiant_synergy  = get_team_synergy(match['radiant_team'], synergy)
+    dire_synergy     = get_team_synergy(match['dire_team'], synergy)
+    features         = radiant_winrates + dire_winrates + [radiant_synergy, dire_synergy]
+    label            = int(match['radiant_win'])
     X.append(features)
     y.append(label)
 
@@ -99,12 +107,14 @@ X = np.array(X)
 y = np.array(y)
 
 # Train/Test Split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
 # Feature Scaling
-scaler  =   StandardScaler()
-X_train =   scaler.fit_transform(X_train)
-X_test  =   scaler.transform(X_test)
+scaler  = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test  = scaler.transform(X_test)
 
 # Model Architecture
 model = keras.Sequential([
@@ -134,7 +144,15 @@ model.fit(
     callbacks=[early_stopping]
 )
 
-# Save
-model.save(f'{MODEL_DIR}/dota2_model.h5')
-joblib.dump(scaler, f'{MODEL_DIR}/scaler.pkl')
-print("Model saved!")
+# Save model to S3
+with tempfile.TemporaryDirectory() as tmp_dir:
+    model_path  = f"{tmp_dir}/dota2_model.h5"
+    scaler_path = f"{tmp_dir}/scaler.pkl"
+
+    model.save(model_path)
+    joblib.dump(scaler, scaler_path)
+
+    s3.upload_file(model_path,  S3_BUCKET, f"{S3_PREFIX}/dota2_model.h5")
+    s3.upload_file(scaler_path, S3_BUCKET, f"{S3_PREFIX}/scaler.pkl")
+
+    print(f"Model saved to s3://{S3_BUCKET}/{S3_PREFIX}/")
