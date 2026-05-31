@@ -282,7 +282,19 @@ def recommend():
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory('static', 'favicon.ico', mimetype='image/x-icon')
+    return send_from_directory('static', 'favicon-32x32.png', mimetype='image/png')
+
+@app.route('/favicon.svg')
+def favicon_svg():
+    return send_from_directory('static', 'favicon.svg', mimetype='image/svg+xml')
+
+@app.route('/apple-touch-icon.png')
+def apple_touch_icon():
+    return send_from_directory('static', 'favicon-32x32.png', mimetype='image/png')
+
+@app.route('/apple-touch-icon-precomposed.png')
+def apple_touch_icon_precomposed():
+    return send_from_directory('static', 'favicon-32x32.png', mimetype='image/png')
 
 @app.route('/')
 def index():
