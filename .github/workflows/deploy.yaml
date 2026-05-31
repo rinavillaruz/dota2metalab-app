@@ -64,7 +64,7 @@ jobs:
           pip install -r build/requirements-api.txt
           pip install -r build/requirements-fetcher.txt
           pip install -r build/requirements-test.txt
-          pip install pytest-cov 
+          pip install pytest-cov
 
       - name: Audit Python dependencies
         run: |
@@ -103,9 +103,6 @@ jobs:
           file: build/Dockerfile.base
           push: true
           platforms: linux/amd64
-          # provenance=false prevents an attestation manifest with platform=unknown/unknown
-          # from being pushed alongside the real image. Without this, Kind's container
-          # runtime gets confused by the unknown platform entry and fails to pull the image.
           provenance: false
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-base:latest
           cache-from: type=gha,scope=base
@@ -236,9 +233,6 @@ jobs:
           file: build/Dockerfile.api
           push: true
           platforms: linux/amd64
-          # provenance=false prevents an attestation manifest with platform=unknown/unknown
-          # from being pushed alongside the real image. Without this, Kind's container
-          # runtime gets confused by the unknown platform entry and fails to pull the image.
           provenance: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-api:${{ needs.generate-tag.outputs.tag }}
@@ -277,9 +271,6 @@ jobs:
           file: build/Dockerfile.trainer
           push: true
           platforms: linux/amd64
-          # provenance=false prevents an attestation manifest with platform=unknown/unknown
-          # from being pushed alongside the real image. Without this, Kind's container
-          # runtime gets confused by the unknown platform entry and fails to pull the image.
           provenance: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-trainer:${{ needs.generate-tag.outputs.tag }}
@@ -318,9 +309,6 @@ jobs:
           file: build/Dockerfile.fetcher
           push: true
           platforms: linux/amd64
-          # provenance=false prevents an attestation manifest with platform=unknown/unknown
-          # from being pushed alongside the real image. Without this, Kind's container
-          # runtime gets confused by the unknown platform entry and fails to pull the image.
           provenance: false
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/dota2metalab-fetcher:${{ needs.generate-tag.outputs.tag }}
@@ -361,8 +349,6 @@ jobs:
           IMAGE_TAG="${{ needs.generate-tag.outputs.tag }}"
           echo "Updating values-dev.yaml with tag: $IMAGE_TAG"
 
-          # Only update the tag for images that were actually built.
-          # Each service has its own tag — skipped builds keep their existing tag.
           if [ "${{ needs.build-api.result }}" == "success" ]; then
             yq e ".image.api.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-dev.yaml
             echo "Updated api tag to $IMAGE_TAG"
@@ -389,7 +375,7 @@ jobs:
 
   deploy-staging:
     runs-on: ubuntu-latest
-    needs: [deploy-dev, generate-tag]
+    needs: [deploy-dev, generate-tag, build-api, build-trainer, build-fetcher]
     environment: staging
     if: always() && needs.deploy-dev.result == 'success'
     steps:
@@ -410,12 +396,27 @@ jobs:
           IMAGE_TAG="${{ needs.generate-tag.outputs.tag }}"
           echo "Updating values-staging.yaml with tag: $IMAGE_TAG"
 
-          yq e ".image.api.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-staging.yaml
-          yq e ".image.fetcher.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-staging.yaml
-          yq e ".image.trainer.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-staging.yaml
+          # Only update tags for images that were actually built
+          if [ "${{ needs.build-api.result }}" == "success" ]; then
+            yq e ".image.api.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-staging.yaml
+            echo "Updated api tag to $IMAGE_TAG"
+          fi
+
+          if [ "${{ needs.build-fetcher.result }}" == "success" ]; then
+            yq e ".image.fetcher.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-staging.yaml
+            echo "Updated fetcher tag to $IMAGE_TAG"
+          fi
+
+          if [ "${{ needs.build-trainer.result }}" == "success" ]; then
+            yq e ".image.trainer.tag = \"$IMAGE_TAG\"" -i deploy/helm/values-staging.yaml
+            echo "Updated trainer tag to $IMAGE_TAG"
+          fi
 
           git config user.email "142535552+rinavillaruz@users.noreply.github.com"
           git config user.name "rinavillaruz"
           git add deploy/helm/values-staging.yaml
-          git diff --cached --quiet || git commit -m "ci: update staging image tags [skip ci]"
+          git diff --cached --quiet || git commit -m "ci: update staging image tags [skip ci]
+          $([ "${{ needs.build-api.result }}" == "success" ] && echo "- api: $IMAGE_TAG")
+          $([ "${{ needs.build-fetcher.result }}" == "success" ] && echo "- fetcher: $IMAGE_TAG")
+          $([ "${{ needs.build-trainer.result }}" == "success" ] && echo "- trainer: $IMAGE_TAG")"
           git push origin HEAD:staging
