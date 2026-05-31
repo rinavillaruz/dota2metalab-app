@@ -1,6 +1,7 @@
-# trains a neural network, saves model and scaler to S3
+# trains a neural network, saves model and scaler to S3 with versioning
 import os
 import time
+import datetime
 import requests
 import numpy as np
 import joblib
@@ -13,20 +14,23 @@ from pymongo import MongoClient
 from src.data.open_dota_fetcher import OpenDotaFetcher
 
 # S3 configuration
-S3_BUCKET = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
-S3_PREFIX = os.getenv('S3_PREFIX', 'models')
-s3        = boto3.client('s3')
+S3_BUCKET        = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
+S3_PREFIX        = os.getenv('S3_PREFIX', 'models/current')
+CURRENT_PREFIX   = S3_PREFIX
+VERSION          = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+VERSIONED_PREFIX = f"models/{VERSION}"
+s3               = boto3.client('s3')
 
 # API URL for reload notification
 API_URL = os.getenv('API_URL', 'http://dota2metalab-api:8080')
 
-# Check if model already exists in S3 — skip training if it does
+# Check if model already exists in current/ — skip training if it does
 try:
-    s3.head_object(Bucket=S3_BUCKET, Key=f"{S3_PREFIX}/dota2_model.h5")
-    print("Model already exists in S3. Skipping training.")
+    s3.head_object(Bucket=S3_BUCKET, Key=f"{CURRENT_PREFIX}/dota2_model.h5")
+    print("Model already exists in current/. Skipping training.")
     exit(0)
 except Exception:
-    print("Model not found in S3. Proceeding with training...")
+    print("No current model found. Proceeding with training...")
 
 # MongoDB connection
 MONGO_URI  = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
@@ -149,7 +153,7 @@ model.fit(
     callbacks=[early_stopping]
 )
 
-# Save model to S3
+# Save model to S3 with versioning
 with tempfile.TemporaryDirectory() as tmp_dir:
     model_path  = f"{tmp_dir}/dota2_model.h5"
     scaler_path = f"{tmp_dir}/scaler.pkl"
@@ -157,13 +161,26 @@ with tempfile.TemporaryDirectory() as tmp_dir:
     model.save(model_path)
     joblib.dump(scaler, scaler_path)
 
-    s3.upload_file(model_path,  S3_BUCKET, f"{S3_PREFIX}/dota2_model.h5")
-    s3.upload_file(scaler_path, S3_BUCKET, f"{S3_PREFIX}/scaler.pkl")
+    # Step 1 — save to versioned folder for history/rollback
+    s3.upload_file(model_path,  S3_BUCKET, f"{VERSIONED_PREFIX}/dota2_model.h5")
+    s3.upload_file(scaler_path, S3_BUCKET, f"{VERSIONED_PREFIX}/scaler.pkl")
+    print(f"Model version saved: s3://{S3_BUCKET}/{VERSIONED_PREFIX}/")
 
-    print(f"Model saved to s3://{S3_BUCKET}/{S3_PREFIX}/")
+    # Step 2 — copy to current/ (atomic switch, no downtime)
+    s3.copy_object(
+        Bucket=S3_BUCKET,
+        CopySource={'Bucket': S3_BUCKET, 'Key': f"{VERSIONED_PREFIX}/dota2_model.h5"},
+        Key=f"{CURRENT_PREFIX}/dota2_model.h5"
+    )
+    s3.copy_object(
+        Bucket=S3_BUCKET,
+        CopySource={'Bucket': S3_BUCKET, 'Key': f"{VERSIONED_PREFIX}/scaler.pkl"},
+        Key=f"{CURRENT_PREFIX}/scaler.pkl"
+    )
+    print(f"Model promoted to current: s3://{S3_BUCKET}/{CURRENT_PREFIX}/")
 
 # Notify API to reload model without restarting pod
-time.sleep(5)  # Wait for S3 upload to propagate
+time.sleep(5)
 
 try:
     response = requests.post(f"{API_URL}/reload-model", timeout=30)
