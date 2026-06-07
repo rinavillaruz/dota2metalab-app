@@ -1,4 +1,4 @@
-# app.py trigger pipeline
+# app.py
 import os
 import joblib
 import boto3
