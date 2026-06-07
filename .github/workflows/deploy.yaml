@@ -421,11 +421,30 @@ jobs:
           $([ "${{ needs.build-trainer.result }}" == "success" ] && echo "- trainer: $IMAGE_TAG")"
           git push origin HEAD:staging
 
+  zap-scan:
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: always() && needs.deploy-staging.result == 'success'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Wait for staging to be ready
+        run: sleep 60
+
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: 'https://staging.dota2metalab.com'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+          fail_action: false
+          
   deploy-prod:
     runs-on: ubuntu-latest
-    needs: [deploy-staging, generate-tag, build-api, build-trainer, build-fetcher]
+    needs: [deploy-staging, zap-scan, generate-tag, build-api, build-trainer, build-fetcher]
     environment: prod
-    if: always() && needs.deploy-staging.result == 'success'
+    if: always() && needs.deploy-staging.result == 'success' && needs.zap-scan.result == 'success'
     steps:
       - name: Checkout infra repo
         uses: actions/checkout@v6
