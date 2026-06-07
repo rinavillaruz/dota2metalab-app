@@ -62,7 +62,10 @@ HERO_NAMES = [
 ]
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://dota2metalab.com",
+    "https://staging.dota2metalab.com"
+])
 
 # Global state
 model         = None
