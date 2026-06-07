@@ -437,10 +437,13 @@ jobs:
       - name: Wait for staging to be ready
         run: sleep 60
 
+      - name: Create ZAP reports directory
+        run: mkdir -p zap-reports
+
       - name: OWASP ZAP Baseline Scan
         run: |
           docker run --rm \
-            -v $(pwd):/zap/wrk/:rw \
+            -v $(pwd)/zap-reports:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t https://staging.dota2metalab.com \
@@ -456,10 +459,7 @@ jobs:
         if: always()
         with:
           name: zap-scan-report
-          path: |
-            report_html.html
-            report_json.json
-            report_md.md
+          path: zap-reports/
           
   deploy-prod:
     runs-on: ubuntu-latest
