@@ -441,6 +441,8 @@ jobs:
         run: |
           mkdir -p zap-reports
           cp .zap/rules.tsv zap-reports/rules.tsv
+          touch zap-reports/report_html.html zap-reports/report_json.json zap-reports/report_md.md
+          chmod 777 zap-reports/report_html.html zap-reports/report_json.json zap-reports/report_md.md
 
       - name: OWASP ZAP Baseline Scan
         run: |
