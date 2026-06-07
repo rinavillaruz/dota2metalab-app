@@ -7,7 +7,6 @@ from pymongo import MongoClient
 from flask import Flask, request, jsonify
 from flask import send_from_directory
 from flask_cors import CORS
-from flask import send_from_directory
 
 MONGO_URI   = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
 S3_BUCKET   = os.getenv('S3_BUCKET', 'dota2metalab-models-643297135135')
@@ -294,6 +293,14 @@ def apple_touch_icon():
 
 @app.route('/apple-touch-icon-precomposed.png')
 def apple_touch_icon_precomposed():
+    return send_from_directory('static', 'favicon-32x32.png', mimetype='image/png')
+
+@app.route('/favicon-16x16.png')
+def favicon_16():
+    return send_from_directory('static', 'favicon-16x16.png', mimetype='image/png')
+
+@app.route('/favicon-32x32.png')
+def favicon_32():
     return send_from_directory('static', 'favicon-32x32.png', mimetype='image/png')
 
 @app.route('/')
