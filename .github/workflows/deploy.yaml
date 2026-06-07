@@ -428,28 +428,29 @@ jobs:
     permissions:
       issues: write
       actions: write
-      contents: write 
+      contents: write
     if: always() && needs.deploy-staging.result == 'success'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Fix ZAP workspace permissions
-        run: chmod 777 ${{ github.workspace }}
-
       - name: Wait for staging to be ready
         run: sleep 60
 
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.9.0
-        with:
-          target: 'https://staging.dota2metalab.com'
-          rules_file_name: '.zap/rules.tsv'
-          cmd_options: '-a'
-          fail_action: false
-          allow_issue_writing: false
-          artifact_name: ""
-      
+        run: |
+          docker run --rm \
+            -v $(pwd):/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t https://staging.dota2metalab.com \
+            -c .zap/rules.tsv \
+            -J report_json.json \
+            -w report_md.md \
+            -r report_html.html \
+            -a \
+            -I
+
       - name: Upload ZAP Report
         uses: actions/upload-artifact@v4
         if: always()

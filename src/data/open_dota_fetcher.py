@@ -1,4 +1,4 @@
-# Open Dota Fetcher 
+# Open Dota Fetcher Class
 import os
 import requests
 import time
