@@ -62,6 +62,18 @@ HERO_NAMES = [
 ]
 
 app = Flask(__name__)
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:;"
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
+    response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
+    return response
+
 CORS(app, origins=[
     "https://dota2metalab.com",
     "https://staging.dota2metalab.com"
@@ -186,7 +198,6 @@ def get_team_synergy(team, synergy):
             else:
                 scores.append(0.5)
     return sum(scores) / len(scores)
-
 
 @app.route('/health')
 def health():
