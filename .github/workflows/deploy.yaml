@@ -427,6 +427,8 @@ jobs:
     needs: [deploy-staging]
     permissions:
       issues: write
+      actions: write
+      contents: write 
     if: always() && needs.deploy-staging.result == 'success'
     steps:
       - name: Checkout Code
