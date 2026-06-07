@@ -440,7 +440,7 @@ jobs:
       - name: Create ZAP reports directory
         run: |
           mkdir -p zap-reports
-          cp .zap/rules.tsv zap-reports/rules.tsv    ← copy rules file
+          cp .zap/rules.tsv zap-reports/rules.tsv
 
       - name: OWASP ZAP Baseline Scan
         run: |
