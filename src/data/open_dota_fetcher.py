@@ -112,4 +112,3 @@ class OpenDotaFetcher:
             elif e.response.status_code == 404:
                 return None
             raise
-#touch to trigger the pipeline for owasp
