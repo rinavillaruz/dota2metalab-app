@@ -136,7 +136,8 @@ jobs:
           elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
-            git diff --name-only HEAD~1 HEAD | grep -q "build/Dockerfile.fetcher\|build/requirements-fetcher\|scripts/store_database.py" \
+            # Rebuild if fetcher source, dependencies, scripts, or shared data modules change
+            git diff --name-only HEAD~1 HEAD | grep -q "build/Dockerfile.fetcher\|build/requirements-fetcher\|scripts/store_database.py\|src/data/" \
               && echo "changed=true" >> $GITHUB_OUTPUT \
               || echo "changed=false" >> $GITHUB_OUTPUT
           fi
@@ -186,7 +187,7 @@ jobs:
           elif ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "changed=true" >> $GITHUB_OUTPUT
           else
-            git diff --name-only HEAD~1 HEAD | grep -q "build/Dockerfile.trainer\|build/requirements-trainer\|scripts/train_model.py" \
+            git diff --name-only HEAD~1 HEAD | grep -q "build/Dockerfile.trainer\|build/requirements-trainer\|scripts/train_model.py\|src/data/" \
               && echo "changed=true" >> $GITHUB_OUTPUT \
               || echo "changed=false" >> $GITHUB_OUTPUT
           fi
