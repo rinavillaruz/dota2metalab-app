@@ -449,7 +449,7 @@ jobs:
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t https://staging.dota2metalab.com \
-            -c rules.tsv \                           ← just filename, not path
+            -c rules.tsv \
             -J report_json.json \
             -w report_md.md \
             -r report_html.html \
