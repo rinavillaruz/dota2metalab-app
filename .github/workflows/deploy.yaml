@@ -438,7 +438,9 @@ jobs:
         run: sleep 60
 
       - name: Create ZAP reports directory
-        run: mkdir -p zap-reports
+        run: |
+          mkdir -p zap-reports
+          cp .zap/rules.tsv zap-reports/rules.tsv    ← copy rules file
 
       - name: OWASP ZAP Baseline Scan
         run: |
@@ -447,7 +449,7 @@ jobs:
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
             -t https://staging.dota2metalab.com \
-            -c .zap/rules.tsv \
+            -c rules.tsv \                           ← just filename, not path
             -J report_json.json \
             -w report_md.md \
             -r report_html.html \
