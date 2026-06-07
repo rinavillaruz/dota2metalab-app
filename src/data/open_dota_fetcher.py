@@ -1,4 +1,3 @@
-# fetches from OpenDota API with pagination
 import os
 import requests
 import time
@@ -113,3 +112,4 @@ class OpenDotaFetcher:
             elif e.response.status_code == 404:
                 return None
             raise
+#touch to trigger the pipeline for owasp
