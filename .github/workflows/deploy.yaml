@@ -435,15 +435,13 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Fix ZAP workspace permissions
-        run: |
-          mkdir -p .zap
-          chmod a+w .zap   # fixes Permission denied for zap.yaml
+        run: chmod 777 ${{ github.workspace }}
 
       - name: Wait for staging to be ready
         run: sleep 60
 
       - name: OWASP ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.9.0
         with:
           target: 'https://staging.dota2metalab.com'
           rules_file_name: '.zap/rules.tsv'
