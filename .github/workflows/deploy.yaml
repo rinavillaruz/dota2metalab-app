@@ -417,6 +417,7 @@ jobs:
           git config user.name "rinavillaruz"
           git add deploy/helm/values-staging.yaml
           git diff --cached --quiet || git commit -m "ci: update staging image tags [skip ci]
+          - pipeline: ${{ github.run_number }}
           $([ "${{ needs.build-api.result }}" == "success" ] && echo "- api: $IMAGE_TAG")
           $([ "${{ needs.build-fetcher.result }}" == "success" ] && echo "- fetcher: $IMAGE_TAG")
           $([ "${{ needs.build-trainer.result }}" == "success" ] && echo "- trainer: $IMAGE_TAG")"
@@ -507,7 +508,8 @@ jobs:
           git config user.email "142535552+rinavillaruz@users.noreply.github.com"
           git config user.name "rinavillaruz"
           git add deploy/helm/values-prod.yaml
-          git diff --cached --quiet || git commit -m "ci: update prod image tags [skip ci]
+          git diff --cached --quiet || git commit -m "ci: deploy to prod [skip ci]
+          - pipeline: ${{ github.run_number }}
           $([ "${{ needs.build-api.result }}" == "success" ] && echo "- api: $IMAGE_TAG")
           $([ "${{ needs.build-fetcher.result }}" == "success" ] && echo "- fetcher: $IMAGE_TAG")
           $([ "${{ needs.build-trainer.result }}" == "success" ] && echo "- trainer: $IMAGE_TAG")"
