@@ -25,12 +25,12 @@ s3               = boto3.client('s3')
 API_URL = os.getenv('API_URL', 'http://dota2metalab-api:8080')
 
 # Check if model already exists in current/ — skip training if it does
-try:
-    s3.head_object(Bucket=S3_BUCKET, Key=f"{CURRENT_PREFIX}/dota2_model.h5")
-    print("Model already exists in current/. Skipping training.")
-    exit(0)
-except Exception:
-    print("No current model found. Proceeding with training...")
+# try:
+#     s3.head_object(Bucket=S3_BUCKET, Key=f"{CURRENT_PREFIX}/dota2_model.h5")
+#     print("Model already exists in current/. Skipping training.")
+#     exit(0)
+# except Exception:
+#     print("No current model found. Proceeding with training...")
 
 # MongoDB connection
 MONGO_URI  = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
