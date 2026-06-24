@@ -212,13 +212,8 @@ def health():
 
 @app.route('/reload-model', methods=['POST'])
 def reload_model():
-    """Reload model from S3 without restarting the pod.
-    Called after trainer completes to pick up new model.
-    """
-    success = load_model_from_s3()
-    if success:
-        return jsonify({'status': 'model reloaded successfully'})
-    return jsonify({'status': 'model not found in S3'}), 404
+    init_app_data()
+    return jsonify({'status': 'model reloaded successfully'})
 
 
 @app.route('/stats')
