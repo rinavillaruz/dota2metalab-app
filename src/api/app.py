@@ -201,13 +201,14 @@ def get_team_synergy(team, synergy):
 
 @app.route('/health')
 def health():
+    is_ready = model is not None and len(hero_winrates) > 0 and len(synergy) > 0
     return jsonify({
-        'status':        'healthy',
+        'status':        'healthy' if is_ready else 'initializing',
         'model_loaded':  model is not None,
         'mongodb':       client is not None,
         'heroes_loaded': len(hero_winrates),
         'synergy_pairs': len(synergy)
-    })
+    }), 200 if is_ready else 503
 
 
 @app.route('/reload-model', methods=['POST'])
