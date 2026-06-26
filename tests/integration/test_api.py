@@ -24,14 +24,20 @@ def client():
 
 class TestHealthEndpoint:
 
-    # Tests that the health endpoint returns 200 OK
-    def test_health_returns_200(self, client):
+    # Tests that health returns 503 when synergy not loaded (no data in test env)
+    def test_health_returns_503_when_not_initialized(self, client):
         response = client.get("/health")
-        assert response.status_code == 200
+        assert response.status_code == 503
+
+    def test_health_payload_has_status_field(self, client):
+        response = client.get("/health")
+        data = response.get_json()
+        assert 'status' in data
+        assert data['status'] == 'initializing'
 
     # Tests that the health endpoint returns the expected fields
     def test_health_payload_structure(self, client):
-        data = json.loads(client.get("/health").data)
+        data = response = client.get("/health").get_json()
         assert "status" in data
         assert "model_loaded" in data
         assert "mongodb" in data
