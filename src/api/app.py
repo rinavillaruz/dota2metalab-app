@@ -210,6 +210,9 @@ def health():
         'synergy_pairs': len(synergy)
     }), 200 if is_ready else 503
 
+@app.route('/ping')
+def ping():
+    return jsonify({'status': 'ok'}), 200
 
 @app.route('/reload-model', methods=['POST'])
 def reload_model():
